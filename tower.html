@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            overflow: hidden;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding-top: 10px;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            visibility: visible;
+            opacity: 1;
+            transition: visibility 0s, opacity 0.5s linear;
+        }
+        .overlay.hidden {
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        #difficultyScreen h2, #mapSelectionScreen h2 { margin-bottom: 20px; }
+        .overlayBtn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .overlayBtn:hover { background-color: #367c39; }
+
+        /* Map Selection Specifics */
+        #mapSelectionScreen .map-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        .mapBtn {
+             padding: 10px 20px;
+             font-size: 1em;
+        }
+
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            visibility: hidden;
+        }
+
+
+        #gameCanvas {
+            background-color: #90ee90; /* Light Green background */
+            border: 1px solid #000;
+            cursor: pointer;
+        }
+
+        #uiContainer {
+            position: relative;
+            margin-top: -30px;
+            z-index: 10;
+            width: 90%;
+            max-width: 800px;
+            background-color: rgba(230, 230, 230, 0.9);
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+
+        .ui-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #gameStats {
+             flex-basis: 160px;
+             display: flex;
+             flex-direction: column;
+             align-items: flex-start;
+             gap: 1px;
+             font-size: 0.9em;
+        }
+
+        /* Tower button container - adjust size */
+        #towerButtons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px; /* Smaller gap */
+            justify-content: center;
+            flex-grow: 1;
+            max-width: 500px; /* Limit width to allow wrapping */
+        }
+
+        .towerButton {
+            padding: 3px 5px; /* Smaller padding */
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px; /* Smaller radius */
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.75em; /* Even smaller font */
+            min-width: 60px; /* Slightly smaller min-width */
+            line-height: 1.1; /* Tighter line height */
+            flex: 1 1 60px; /* Allow flex shrinking/growing */
+        }
+        .towerButton br { display: none; } /* Hide BR for single line */
+        /* Optional: Add tooltips later */
+
+
+        .towerButton:hover {
+            background-color: #367c39;
+        }
+        .towerButton.deselect {
+             background-color: #f44336;
+        }
+        .towerButton.deselect:hover {
+            background-color: #d32f2f;
+        }
+
+        #waveButtonContainer {
+             text-align: center;
+             flex-basis: 100px;
+        }
+
+        #waveButton {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #waveButton:hover { background-color: #f57c00; }
+        #waveButton:disabled { background-color: #bdbdbd; cursor: not-allowed; color: #757575;}
+
+        /* Upgrade Panel Styles */
+        #upgradePanel {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            background-color: rgba(50, 50, 50, 0.9);
+            color: white;
+            border: 1px solid #fff;
+            border-radius: 5px;
+            padding: 10px;
+            z-index: 20;
+            display: none;
+            font-size: 0.9em;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        #upgradePanel h4 { margin: 0 0 5px 0; text-align: center; }
+        .upgrade-stat { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; }
+        .upgrade-stat span { flex-basis: 40%; }
+        .upgrade-stat button {
+            padding: 3px 6px; font-size: 0.8em; cursor: pointer;
+            background-color: #4CAF50; color: white; border: none; border-radius: 3px;
+        }
+         .upgrade-stat button:hover { background-color: #367c39; }
+         .upgrade-stat button:disabled { background-color: #777; cursor: not-allowed; }
+         #closeUpgradePanel {
+             position: absolute;
+             top: 2px;
+             right: 5px;
+             background: none;
+             border: none;
+             color: white;
+             font-size: 1.2em;
+             cursor: pointer;
+         }
+    </style>
+</head>
+
+<body>
+    <!-- Difficulty Selection Screen -->
+    <div id="difficultyScreen" class="overlay">
+        <h2>Select Difficulty (Speed)</h2>
+        <button class="overlayBtn" onclick="selectDifficulty(1.4)">Easy (Fast)</button>
+        <button class="overlayBtn" onclick="selectDifficulty(1.8)">Medium (Faster)</button>
+        <button class="overlayBtn" onclick="selectDifficulty(2.2)">Hard (Fastest)</button>
+    </div>
+
+    <!-- Map Selection Screen -->
+    <div id="mapSelectionScreen" class="overlay hidden">
+         <h2>Select Map</h2>
+         <div class="map-options">
+             <button class="overlayBtn mapBtn" onclick="selectMap(0)">Map 1 (S-Curve)</button>
+             <button class="overlayBtn mapBtn" onclick="selectMap(1)">Map 2 (Zig-Zag)</button>
+             <button class="overlayBtn mapBtn" onclick="selectMap(2)">Map 3 (Loop)</button>
+             <button class="overlayBtn mapBtn" onclick="selectMap(3)">Map 4 (Spiral In)</button>
+             <button class="overlayBtn mapBtn" onclick="selectMap(4)">Map 5 (Long Path)</button>
+         </div>
+    </div>
+
+
+    <!-- Container for canvas and upgrade panel -->
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <!-- Upgrade Panel -->
+        <div id="upgradePanel">
+            <button id="closeUpgradePanel" onclick="deselectTower(true)">&times;</button>
+            <h4>Tower Upgrades</h4>
+            <div class="upgrade-stat">
+                <span>Damage: <span id="upgradeDmgVal">?</span> (Lvl <span id="upgradeDmgLvl">?</span>)</span>
+                <button id="upgradeDmgBtn" onclick="tryUpgrade('damage')">Cost: $<span id="upgradeDmgCost">?</span></button>
+            </div>
+            <div class="upgrade-stat">
+                <span>Range: <span id="upgradeRngVal">?</span> (Lvl <span id="upgradeRngLvl">?</span>)</span>
+                <button id="upgradeRngBtn" onclick="tryUpgrade('range')">Cost: $<span id="upgradeRngCost">?</span></button>
+            </div>
+            <div class="upgrade-stat">
+                 <span>Speed: <span id="upgradeSpdVal">?</span> (Lvl <span id="upgradeSpdLvl">?</span>)</span>
+                <button id="upgradeSpdBtn" onclick="tryUpgrade('speed')">Cost: $<span id="upgradeSpdCost">?</span></button>
+            </div>
+            <!-- Add slots for potential 4th upgrade -->
+            <div class="upgrade-stat" id="upgradeSpecialStat" style="display: none;">
+                 <span><span id="upgradeSpecialName">?</span>: <span id="upgradeSpecialVal">?</span> (Lvl <span id="upgradeSpecialLvl">?</span>)</span>
+                <button id="upgradeSpecialBtn" onclick="tryUpgrade('special')">Cost: $<span id="upgradeSpecialCost">?</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main UI Container -->
+    <div id="uiContainer">
+        <div id="gameStats" class="ui-group">
+            <div>Wave: <span id="waveNumber">1</span></div>
+            <div>Money: $<span id="money">500</span></div>
+            <div>Lives: <span id="lives">20</span></div>
+        </div>
+
+        <div id="towerButtons" class="ui-group">
+            <!-- Existing 4 -->
+            <button class="towerButton" onclick="selectTowerForPlacement('basic')">Basic ($20)</button>
+            <button class="towerButton" onclick="selectTowerForPlacement('strong')">Strong ($50)</button>
+            <button class="towerButton" onclick="selectTowerForPlacement('sniper')">Sniper ($75)</button>
+            <button class="towerButton" onclick="selectTowerForPlacement('splash')">Splash ($60)</button>
+             <!-- 10 New -->
+             <button class="towerButton" onclick="selectTowerForPlacement('slow')">Slow ($30)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('poison')">Poison ($45)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('machine_gun')">MG ($80)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('cannon')">Cannon ($100)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('laser')">Laser ($120)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('mortar')">Mortar ($90)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('multi_shot')">Multi ($70)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('chain')">Chain ($85)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('gold')">Gold ($65)</button>
+             <button class="towerButton" onclick="selectTowerForPlacement('crossbow')">Crossbow ($40)</button>
+
+            <button class="towerButton deselect" onclick="deselectTower(true)">Deselect</button>
+        </div>
+
+         <div id="waveButtonContainer" class="ui-group">
+             <button id="waveButton" onclick="startWave()">Start Wave</button>
+         </div>
+    </div>
+
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const waveNumberDisplay = document.getElementById('waveNumber');
+        const moneyDisplay = document.getElementById('money');
+        const livesDisplay = document.getElementById('lives');
+        const waveButton = document.getElementById('waveButton');
+        const upgradePanel = document.getElementById('upgradePanel');
+        const difficultyScreen = document.getElementById('difficultyScreen');
+        const mapSelectionScreen = document.getElementById('mapSelectionScreen');
+        const gameContainer = document.getElementById('game-container');
+
+        let money = 500;
+        let lives = 20;
+        let wave = 1;
+        let placementGrid = [];
+        const gridSize = 20;
+        const gridWidth = canvas.width / gridSize;
+        const gridHeight = canvas.height / gridSize;
+        let enemies = [];
+        let towers = [];
+        let projectiles = [];
+        let selectedTowerType = null; // For placement
+        let selectedTower = null; // For upgrade
+        let gameActive = true;
+        let mouseX = -1, mouseY = -1;
+        let nextTowerId = 0; // Simple ID generator
+        let gameLoopId = null; // To store requestAnimationFrame ID
+
+        let difficultySpeedMultiplier = 1.8; // Default to Medium (Faster)
+
+        const MAX_UPGRADE_LEVEL = 8;
+        const BASE_UPGRADE_COST = 20;
+
+        // --- Map Data ---
+        const mapData = [
+             [ { x: 0, y: 5 }, { x: 20, y: 5 }, { x: 20, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 20 }, { x: 40, y: 20 } ],
+             [ { x: 0, y: 3 }, { x: 35, y: 3 }, { x: 35, y: 12 }, { x: 5, y: 12 }, { x: 5, y: 21 }, { x: 40, y: 21 } ],
+             [ { x: 0, y: 12 }, { x: 10, y: 12 }, { x: 10, y: 5 }, { x: 30, y: 5 }, { x: 30, y: 20 }, { x: 10, y: 20 }, { x: 10, y: 12 }, {x: 40, y: 12} ],
+             [ { x: 0, y: 1 }, { x: 38, y: 1 }, { x: 38, y: 23 }, { x: 2, y: 23 }, { x: 2, y: 4 }, { x: 36, y: 4 }, { x: 36, y: 21 }, { x: 4, y: 21 }, { x: 4, y: 7 }, { x: 34, y: 7 }, { x: 34, y: 19 }, { x: 6, y: 19 }, { x: 6, y: 10 }, { x: 20, y: 10 } ],
+             [ { x: 1, y: 0 }, { x: 1, y: 10 }, { x: 15, y: 10 }, { x: 15, y: 3 }, { x: 30, y: 3 }, { x: 30, y: 15 }, { x: 10, y: 15 }, { x: 10, y: 22 }, { x: 38, y: 22 }, { x: 38, y: 0 } ]
+        ];
+        let pathCorners = mapData[0]; // Default to map 0
+        let pathWaypoints = []; // Will be generated after map selection
+        let detailedPath = []; // Will be generated after map selection
+        const pathDetail = 10; // Number of points per segment/curve
+
+        // --- Tower Base Properties (Expanded) ---
+        const towerBaseProperties = {
+             // Original 4
+            'basic': { cost: 20, color: '#4682b4', projectileColor: 'slategray', baseDamage: 1, baseRange: 100, baseCooldown: 50, damageUpgrade: 0.5 },
+            'strong': { cost: 50, color: '#8a2be2', projectileColor: 'darkviolet', baseDamage: 2, baseRange: 100, baseCooldown: 75, damageUpgrade: 1 },
+            'sniper': { cost: 75, color: '#ff8c00', projectileColor: 'darkorange', baseDamage: 5, baseRange: 200, baseCooldown: 100, damageUpgrade: 3 },
+            'splash': { cost: 60, color: '#00ced1', projectileColor: 'aqua', baseDamage: 1, baseRange: 80, baseCooldown: 60, damageUpgrade: 0.5, splashRadius: 40 },
+             // New 10
+            'slow': { cost: 30, color: '#add8e6', projectileColor: 'lightblue', baseDamage: 0.5, baseRange: 90, baseCooldown: 60, damageUpgrade: 0.2, special: 'slow', slowFactor: 0.5, slowDuration: 120 }, // Slows by 50% for 2 seconds (120 frames)
+            'poison': { cost: 45, color: '#90ee90', projectileColor: 'darkgreen', baseDamage: 0.2, baseRange: 85, baseCooldown: 50, damageUpgrade: 0.1, special: 'poison', poisonDps: 0.8, poisonDuration: 180 }, // 0.8 dps for 3 seconds
+            'machine_gun': { cost: 80, color: '#808080', projectileColor: 'dimgray', baseDamage: 0.8, baseRange: 70, baseCooldown: 10, damageUpgrade: 0.3 }, // Very fast fire rate
+            'cannon': { cost: 100, color: '#696969', projectileColor: 'black', baseDamage: 8, baseRange: 120, baseCooldown: 120, damageUpgrade: 4, splashRadius: 25 }, // Slow, high damage, small splash
+            'laser': { cost: 120, color: '#ff69b4', projectileColor: 'deeppink', baseDamage: 10, baseRange: 150, baseCooldown: 150, damageUpgrade: 5, projectileSpeed: 20 }, // Fast projectile
+            'mortar': { cost: 90, color: '#a0522d', projectileColor: 'saddlebrown', baseDamage: 4, baseRange: 250, baseCooldown: 180, damageUpgrade: 2, splashRadius: 60, projectileSpeed: 4 }, // Slow projectile, big splash
+            'multi_shot': { cost: 70, color: '#d2691e', projectileColor: 'chocolate', baseDamage: 0.7, baseRange: 90, baseCooldown: 60, damageUpgrade: 0.4, special: 'multi', projectileCount: 3, spreadAngle: Math.PI / 12 }, // Fires 3 shots in a cone
+            'chain': { cost: 85, color: '#0000ff', projectileColor: 'blue', baseDamage: 2, baseRange: 80, baseCooldown: 70, damageUpgrade: 1, special: 'chain', chainCount: 3, chainRange: 50, chainDamageFalloff: 0.6 }, // Jumps 3 times, 50px range, 60% damage falloff
+            'gold': { cost: 65, color: '#ffd700', projectileColor: 'gold', baseDamage: 0.5, baseRange: 100, baseCooldown: 50, damageUpgrade: 0.2, special: 'gold', goldBonus: 5 }, // +$5 gold per kill assist
+            'crossbow': { cost: 40, color: '#8b4513', projectileColor: 'saddlebrown', baseDamage: 1.5, baseRange: 110, baseCooldown: 40, damageUpgrade: 0.7 } // Faster than basic
+        };
+
+
+        // --- Path Generation (Curved) ---
+        function getQuadraticBezierPoint(t, p0, p1, p2) { /* ... as before ... */
+             const u = 1 - t; const tt = t * t; const uu = u * u; const p = { x: 0, y: 0 }; p.x = uu * p0.x + 2 * u * t * p1.x + tt * p2.x; p.y = uu * p0.y + 2 * u * t * p1.y + tt * p2.y; return p; }
+        function generateDetailedPath() { /* ... as before ... */
+            detailedPath = []; pathWaypoints = pathCorners.map(p => ({ x: p.x * gridSize + gridSize / 2, y: p.y * gridSize + gridSize / 2 })); if (pathWaypoints.length < 2) return; const curveRadius = gridSize * 3;
+            const startPoint = { ...pathWaypoints[0] }; if (pathCorners[0].x === 0) startPoint.x -= gridSize * 2; else if (pathCorners[0].y === 0) startPoint.y -= gridSize * 2; else if (pathCorners[0].x === gridWidth -1) startPoint.x += gridSize * 2; else if (pathCorners[0].y === gridHeight -1) startPoint.y += gridSize * 2; detailedPath.push(startPoint);
+            const firstCorner = pathWaypoints[1]; const firstSegmentEnd = { ...pathWaypoints[0]}; let dx0 = firstCorner.x - pathWaypoints[0].x; let dy0 = firstCorner.y - pathWaypoints[0].y; let dist0 = Math.sqrt(dx0*dx0 + dy0*dy0); if (dist0 > curveRadius) { firstSegmentEnd.x = firstCorner.x - (dx0 / dist0) * curveRadius; firstSegmentEnd.y = firstCorner.y - (dy0 / dist0) * curveRadius; } else { firstSegmentEnd.x = pathWaypoints[0].x; firstSegmentEnd.y = pathWaypoints[0].y; } for (let i = 1; i <= pathDetail; i++) { let t = i / pathDetail; detailedPath.push({ x: pathWaypoints[0].x + (firstSegmentEnd.x - pathWaypoints[0].x) * t, y: pathWaypoints[0].y + (firstSegmentEnd.y - pathWaypoints[0].y) * t }); }
+            for (let i = 1; i < pathWaypoints.length - 1; i++) { const p0 = pathWaypoints[i - 1]; const p1 = pathWaypoints[i]; const p2 = pathWaypoints[i + 1]; let dx1 = p1.x - p0.x; let dy1 = p1.y - p0.y; let dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1); const curveStart = { x: p1.x, y: p1.y }; if (dist1 > curveRadius) { curveStart.x = p1.x - (dx1 / dist1) * curveRadius; curveStart.y = p1.y - (dy1 / dist1) * curveRadius; } else { curveStart.x = p0.x; curveStart.y = p0.y; } let dx2 = p2.x - p1.x; let dy2 = p2.y - p1.y; let dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2); const curveEnd = { x: p1.x, y: p1.y }; if (dist2 > curveRadius) { curveEnd.x = p1.x + (dx2 / dist2) * curveRadius; curveEnd.y = p1.y + (dy2 / dist2) * curveRadius; } else { curveEnd.x = p2.x; curveEnd.y = p2.y; } for (let j = 1; j <= pathDetail; j++) { let t = j / pathDetail; detailedPath.push(getQuadraticBezierPoint(t, curveStart, p1, curveEnd)); } const nextCorner = pathWaypoints[i + 1]; const nextNextCorner = pathWaypoints[i + 2]; if (nextNextCorner) { let dx3 = nextNextCorner.x - nextCorner.x; let dy3 = nextNextCorner.y - nextCorner.y; let dist3 = Math.sqrt(dx3*dx3 + dy3*dy3); const straightSegmentEnd = { ...nextCorner }; if (dist3 > curveRadius && dist2 > curveRadius) { straightSegmentEnd.x = nextCorner.x - (dx3 / dist3) * curveRadius; straightSegmentEnd.y = nextCorner.y - (dy3 / dist3) * curveRadius; } else { straightSegmentEnd.x = nextCorner.x; straightSegmentEnd.y = nextCorner.y; } for (let k = 1; k <= pathDetail; k++) { let t = k / pathDetail; detailedPath.push({ x: curveEnd.x + (straightSegmentEnd.x - curveEnd.x) * t, y: curveEnd.y + (straightSegmentEnd.y - curveEnd.y) * t }); } } else { const finalPoint = pathWaypoints[pathWaypoints.length - 1]; for (let k = 1; k <= pathDetail; k++) { let t = k / pathDetail; detailedPath.push({ x: curveEnd.x + (finalPoint.x - curveEnd.x) * t, y: curveEnd.y + (finalPoint.y - curveEnd.y) * t }); } } }
+             if (detailedPath.length > 0 && (detailedPath[detailedPath.length - 1].x !== pathWaypoints[pathWaypoints.length - 1].x || detailedPath[detailedPath.length - 1].y !== pathWaypoints[pathWaypoints.length - 1].y)) { detailedPath.push(pathWaypoints[pathWaypoints.length - 1]); } const endPoint = detailedPath[detailedPath.length - 1]; const lastCorner = pathCorners[pathCorners.length -1]; if (lastCorner.x === gridWidth -1 ) endPoint.x += gridSize*2; else if (lastCorner.y === gridHeight - 1) endPoint.y += gridSize *2; else if (lastCorner.x === 0) endPoint.x -= gridSize *2; else if (lastCorner.y === 0) endPoint.y -= gridSize*2;
+        }
+        function updatePlacementGrid() { /* ... as before ... */
+             placementGrid = []; for (let i = 0; i < gridHeight; i++) { placementGrid[i] = []; for (let j = 0; j < gridWidth; j++) { placementGrid[i][j] = 0; } } const pathWidth = gridSize * 1.0; const pathWidthSq = pathWidth * pathWidth; if (detailedPath.length < 2) return; for (let i = 0; i < gridHeight; i++) { for (let j = 0; j < gridWidth; j++) { const cellCenterX = j * gridSize + gridSize / 2; const cellCenterY = i * gridSize + gridSize / 2; let isPath = false; for (let k = 0; k < detailedPath.length - 1; k++) { const p1 = detailedPath[k]; const p2 = detailedPath[k + 1]; let dx1 = cellCenterX - p1.x; let dy1 = cellCenterY - p1.y; let dx2 = cellCenterX - p2.x; let dy2 = cellCenterY - p2.y; if ((dx1 * dx1 + dy1 * dy1 < pathWidthSq) || (dx2 * dx2 + dy2 * dy2 < pathWidthSq)) { isPath = true; break; } } if (isPath) { placementGrid[i][j] = 1; } } } }
+        function drawCurvedPath() { /* ... as before ... */
+             if (detailedPath.length < 2) return; ctx.strokeStyle = '#D2B48C'; ctx.lineWidth = gridSize * 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(detailedPath[0].x, detailedPath[0].y); for (let i = 1; i < detailedPath.length; i++) { ctx.lineTo(detailedPath[i].x, detailedPath[i].y); } ctx.stroke(); }
+
+
+        // --- Game Object Classes (Modified Enemy, Tower, Projectile) ---
+        class Enemy {
+             constructor(rarity) {
+                this.x = detailedPath.length > 0 ? detailedPath[0].x : 0;
+                this.y = detailedPath.length > 0 ? detailedPath[0].y : 0;
+                this.baseSpeed = 0.6; this.rarity = rarity;
+                // --- Status Effects ---
+                 this.slowTimer = 0; // How many frames the slow lasts
+                 this.slowFactor = 1; // Speed multiplier (1 = normal, < 1 = slowed)
+                 this.poisonTimer = 0;
+                 this.poisonDps = 0; // Damage per second from poison
+                 this.lastPoisonTickTime = 0; // When the last poison damage was applied
+                 this.hitByGoldTower = false; // Flag for gold tower bonus
+
+                switch (rarity) { case 'common': this.health = 1; this.color = 'red'; this.moneyDrop = 20; break; case 'uncommon': this.health = 2; this.color = 'blue'; this.moneyDrop = 40; break; case 'rare': this.health = 3; this.color = 'yellow'; this.moneyDrop = 80; this.baseSpeed *= 0.9; break; case 'super_rare': this.health = 4; this.color = 'lime'; this.moneyDrop = 160; this.baseSpeed *= 0.8; break; default: this.health = 1; this.color = 'red'; this.moneyDrop = 20; break; }
+                const healthMultiplier = 1 + Math.pow(1.08, wave - 1); this.health *= healthMultiplier; this.maxHealth = this.health;
+                this.detailedPathIndex = 1; this.width = gridSize * 0.8; this.height = gridSize * 0.8;
+            }
+
+             applySlow(factor, duration) {
+                 this.slowFactor = Math.min(this.slowFactor, factor); // Apply the strongest slow
+                 this.slowTimer = Math.max(this.slowTimer, duration); // Extend duration if new slow is longer
+             }
+             applyPoison(dps, duration) {
+                 this.poisonDps = Math.max(this.poisonDps, dps); // Apply strongest poison DPS
+                 this.poisonTimer = Math.max(this.poisonTimer, duration);
+                 this.lastPoisonTickTime = performance.now(); // Start ticking from now
+             }
+             applyGoldMark() {
+                 this.hitByGoldTower = true;
+             }
+
+             updateStatusEffects(deltaTime) { // deltaTime in milliseconds
+                 // Slow
+                 if (this.slowTimer > 0) {
+                     this.slowTimer -= 1; // Decrease timer each frame
+                     if (this.slowTimer <= 0) {
+                         this.slowFactor = 1; // Reset speed factor when timer runs out
+                     }
+                 }
+                 // Poison
+                 if (this.poisonTimer > 0) {
+                     this.poisonTimer -= 1;
+                     const now = performance.now();
+                     const timeSinceLastTick = now - this.lastPoisonTickTime;
+                     // Apply damage proportionally based on time passed since last tick
+                     const damageToApply = this.poisonDps * (timeSinceLastTick / 1000); // Convert ms to s
+                     if (damageToApply > 0) {
+                         this.health -= damageToApply;
+                         this.lastPoisonTickTime = now; // Reset tick time
+                     }
+                      if (this.poisonTimer <= 0) {
+                          this.poisonDps = 0; // Remove poison effect
+                      }
+                 }
+             }
+
+            move() {
+                 if (this.detailedPathIndex >= detailedPath.length) return false;
+                const target = detailedPath[this.detailedPathIndex];
+                const dx = target.x - this.x; const dy = target.y - this.y; const distance = Math.sqrt(dx * dx + dy * dy);
+                // Apply difficulty AND slow multiplier
+                const effectiveSpeed = this.baseSpeed * difficultySpeedMultiplier * this.slowFactor;
+                const moveDist = Math.min(distance, effectiveSpeed);
+                if (distance < moveDist || distance < 1) { this.x = target.x; this.y = target.y; this.detailedPathIndex++; if (this.detailedPathIndex >= detailedPath.length) { return false; } } else { this.x += dx / distance * moveDist; this.y += dy / distance * moveDist; } return true; }
+
+            draw() { // Draw visual indicators for status effects
+                ctx.save(); // Save context before applying effects
+
+                // Opacity/Color change for slow?
+                if (this.slowTimer > 0) {
+                     // Maybe draw a faint blue overlay?
+                    ctx.fillStyle = 'rgba(100, 100, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.width / 2 + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                 // Color change for poison?
+                 if (this.poisonTimer > 0) {
+                    // Maybe draw faint green overlay?
+                    ctx.fillStyle = 'rgba(0, 200, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.width / 2 + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Draw base enemy
+                ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2); ctx.fill();
+                // Draw health bar
+                 if (this.health < this.maxHealth && this.health > 0) { const healthBarWidth = this.width * 1.2; const healthBarHeight = 5; const healthRatio = this.health / this.maxHealth; const currentHealthWidth = healthBarWidth * healthRatio; const barX = this.x - healthBarWidth / 2; const barY = this.y - this.height / 2 - healthBarHeight - 3; ctx.fillStyle = 'grey'; ctx.fillRect(barX, barY, healthBarWidth, healthBarHeight); ctx.fillStyle = healthRatio > 0.5 ? 'lime' : (healthRatio > 0.2 ? 'yellow' : 'red'); ctx.fillRect(barX, barY, currentHealthWidth, healthBarHeight); }
+
+                ctx.restore(); // Restore context
+            }
+        }
+
+        class Tower {
+             constructor(x, y, type) {
+                this.id = nextTowerId++; this.x = x; this.y = y; this.type = type;
+                const baseProps = towerBaseProperties[type];
+                this.color = baseProps.color; this.projectileColor = baseProps.projectileColor;
+                this.baseDamage = baseProps.baseDamage; this.baseRange = baseProps.baseRange; this.baseCooldown = baseProps.baseCooldown;
+                this.splashRadius = baseProps.splashRadius || 0;
+                this.damageUpgrade = baseProps.damageUpgrade;
+                this.special = baseProps.special; // Store special type
+                this.specialProps = { // Store special properties
+                     slowFactor: baseProps.slowFactor, slowDuration: baseProps.slowDuration,
+                     poisonDps: baseProps.poisonDps, poisonDuration: baseProps.poisonDuration,
+                     projectileCount: baseProps.projectileCount, spreadAngle: baseProps.spreadAngle,
+                     chainCount: baseProps.chainCount, chainRange: baseProps.chainRange, chainDamageFalloff: baseProps.chainDamageFalloff,
+                     goldBonus: baseProps.goldBonus,
+                     projectileSpeed: baseProps.projectileSpeed
+                };
+                this.levelDamage = 0; this.levelRange = 0; this.levelSpeed = 0; this.levelSpecial = 0; // Add special level
+                this.costDamage = BASE_UPGRADE_COST; this.costRange = BASE_UPGRADE_COST; this.costSpeed = BASE_UPGRADE_COST; this.costSpecial = BASE_UPGRADE_COST * 1.5; // Special might cost more
+                this.attackTimer = 0; this.width = gridSize; this.height = gridSize; this.target = null; this.angle = 0; }
+
+            // Stat Getters - adjust for potential special upgrades
+            getDamage() { return this.baseDamage + this.levelDamage * this.damageUpgrade; }
+            getRange() { return this.baseRange * (1 + this.levelRange * 0.07); }
+             getAttackCooldown() { return Math.max(10, this.baseCooldown * (0.92 ** this.levelSpeed)); }
+             getAttackSpeedDisplay() { return (1000 / (this.getAttackCooldown() * (1000 / 60))).toFixed(2); }
+
+             // --- Getters for SPECIAL properties based on level ---
+             getSlowFactor() { return this.specialProps.slowFactor ? this.specialProps.slowFactor - (this.levelSpecial * 0.03) : 1; } // Slow stronger
+             getSlowDuration() { return this.specialProps.slowDuration ? this.specialProps.slowDuration + (this.levelSpecial * 15) : 0; } // Slow longer
+             getPoisonDps() { return this.specialProps.poisonDps ? this.specialProps.poisonDps + (this.levelSpecial * 0.2) : 0; }
+             getPoisonDuration() { return this.specialProps.poisonDuration ? this.specialProps.poisonDuration + (this.levelSpecial * 30) : 0; }
+             getProjectileSpeed() { return this.specialProps.projectileSpeed ? this.specialProps.projectileSpeed + this.levelSpecial : 8; } // Default speed 8
+             getChainCount() { return this.specialProps.chainCount ? this.specialProps.chainCount + Math.floor(this.levelSpecial / 2) : 0; } // +1 chain every 2 levels
+             getChainRange() { return this.specialProps.chainRange ? this.specialProps.chainRange + (this.levelSpecial * 5) : 0; }
+             getGoldBonus() { return this.specialProps.goldBonus ? this.specialProps.goldBonus + this.levelSpecial : 0; }
+             // Splash radius could also be upgradable
+             getSplashRadius() { return this.splashRadius + (this.levelSpecial * 3); } // Example: +3 radius per special level
+
+             upgrade(statType) {
+                 let currentLevel, currentCost, costProp, levelProp;
+                 switch(statType) { case 'damage': currentLevel = this.levelDamage; currentCost = this.costDamage; costProp = 'costDamage'; levelProp = 'levelDamage'; break; case 'range': currentLevel = this.levelRange; currentCost = this.costRange; costProp = 'costRange'; levelProp = 'levelRange'; break; case 'speed': currentLevel = this.levelSpeed; currentCost = this.costSpeed; costProp = 'costSpeed'; levelProp = 'levelSpeed'; break; case 'special': if (!this.special) return false; currentLevel = this.levelSpecial; currentCost = this.costSpecial; costProp = 'costSpecial'; levelProp = 'levelSpecial'; break; default: return false; }
+                 if (currentLevel >= MAX_UPGRADE_LEVEL) { console.log("Max level reached for", statType); return false; } if (money < currentCost) { console.log("Not enough money for", statType, "upgrade"); return false; } money -= currentCost; this[levelProp]++; this[costProp] *= 2; console.log(`Upgraded ${statType} to level ${this[levelProp]}. Next cost: ${this[costProp]}`); return true; }
+
+            findTarget() { /* ... same as before ... */ this.target = null; let minDistanceSq = this.getRange() * this.getRange(); for (let enemy of enemies) { if (enemy.health <= 0) continue; const dx = enemy.x - this.x; const dy = enemy.y - this.y; const distanceSq = dx * dx + dy * dy; if (distanceSq <= minDistanceSq) { minDistanceSq = distanceSq; this.target = enemy; } } return this.target; }
+
+             attack() {
+                 if (!this.target || this.target.health <= 0) return;
+                 const dx = this.target.x - this.x; const dy = this.target.y - this.y; this.angle = Math.atan2(dy, dx);
+
+                 const projectileDamage = this.getDamage();
+                 const projSpeed = this.getProjectileSpeed();
+                 const projSplash = this.getSplashRadius();
+
+                 // Handle Multi-Shot specifically
+                 if (this.special === 'multi') {
+                     const numShots = this.specialProps.projectileCount || 3;
+                     const spread = this.specialProps.spreadAngle || Math.PI / 12;
+                     const angleBetweenShots = spread / (numShots - 1 || 1); // Avoid division by zero
+                     const startAngle = this.angle - spread / 2;
+
+                     for (let i = 0; i < numShots; i++) {
+                         const shotAngle = startAngle + i * angleBetweenShots;
+                         projectiles.push(new Projectile(this.x, this.y, this.target, projectileDamage, this.projectileColor, projSplash, projSpeed, shotAngle, this.id + "_multi_" + i, this.specialProps)); // Pass angle
+                     }
+                 } else {
+                     // Standard single projectile (passing relevant special props)
+                     projectiles.push(new Projectile(this.x, this.y, this.target, projectileDamage, this.projectileColor, projSplash, projSpeed, this.angle, this.id, this.specialProps, this)); // Pass tower reference
+                 }
+
+                 this.attackTimer = this.getAttackCooldown();
+             }
+            update() { /* ... same as before ... */ this.attackTimer = Math.max(0, this.attackTimer - 1); const currentRangeSq = this.getRange() * this.getRange(); if (!this.target || !enemies.includes(this.target) || this.target.health <= 0 || (this.target.x - this.x)**2 + (this.target.y - this.y)**2 > currentRangeSq) { this.findTarget(); } if (this.target) { const targetAngle = Math.atan2(this.target.y - this.y, this.target.x - this.x); this.angle = targetAngle; } if (this.target && this.attackTimer <= 0) { this.attack(); } }
+            draw() { /* ... same as before ... */ ctx.fillStyle = this.color; ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height); ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = 'grey'; ctx.fillRect(0, -gridSize * 0.1, gridSize * 0.6, gridSize * 0.2); ctx.restore(); if (selectedTower === this) { ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(this.x, this.y, this.getRange(), 0, Math.PI * 2); ctx.stroke(); } }
+        }
+
+        class Projectile {
+             // Added angle, id, specialProps, sourceTower
+             constructor(x, y, target, damage, color, splashRadius = 0, speed = 8, angle = null, id = null, specialProps = {}, sourceTower = null) {
+                this.id = id || `proj_${Date.now()}_${Math.random()}`; // Unique ID
+                this.x = x; this.y = y; this.target = target; this.damage = damage; this.color = color; this.splashRadius = splashRadius; this.speed = speed; this.angle = angle; // Store angle if provided (for multi-shot)
+                this.width = 6; this.height = 6;
+                 this.specialProps = specialProps; // Store potential effects
+                 this.sourceTower = sourceTower; // Reference to the tower that fired it
+                 this.chainHitTargets = new Set(); // Keep track of targets hit by this chain projectile
+            }
+            move() {
+                 // For directed shots (multi-shot), move along the fixed angle
+                 if (this.angle !== null && this.target === null) { // Target is null for multi-shot projectiles after first frame? No, target is still needed for range check? Let's rethink.
+                     // Multi-shot projectiles should still head towards *initial* target direction, but maybe have limited range? Or just fly straight?
+                     // Let's make them fly straight for simplicity for now.
+                     this.x += Math.cos(this.angle) * this.speed;
+                     this.y += Math.sin(this.angle) * this.speed;
+                     // Check if out of bounds or hit an enemy (more complex collision needed)
+                     // For now, just let it fly until it hits or goes off screen
+                     if (this.x < -this.width || this.x > canvas.width + this.width || this.y < -this.height || this.y > canvas.height + this.height) {
+                         return 'invalid_target'; // Went off screen
+                     }
+                     // Simple enemy collision check for multi-shot projectiles
+                      for (let enemy of enemies) {
+                           if (enemy.health <= 0) continue;
+                           const dx = enemy.x - this.x;
+                           const dy = enemy.y - this.y;
+                           if (dx*dx + dy*dy < (enemy.width/2 + this.width/2)**2) {
+                               this.target = enemy; // Assign target upon collision
+                               return 'hit';
+                           }
+                      }
+
+                     return 'moving'; // Keep moving straight
+                 }
+
+
+                 // Standard targeting move
+                 if (!this.target || !enemies.includes(this.target) || this.target.health <= 0) { return 'invalid_target'; }
+                 const dx = this.target.x - this.x; const dy = this.target.y - this.y; const distance = Math.sqrt(dx * dx + dy * dy);
+                 if (distance < this.speed) { this.x = this.target.x; this.y = this.target.y; return 'hit'; }
+                 else { this.x += dx / distance * this.speed; this.y += dy / distance * this.speed; return 'moving'; }
+             }
+
+             applyDamage() {
+                 if (!this.target || !enemies.includes(this.target) || this.target.health <= 0) { return; }
+
+                 const primaryTarget = this.target; // Store primary target
+
+                 // --- Apply Direct Hit Damage & Effects ---
+                 primaryTarget.health -= this.damage;
+                 this.applySingleTargetEffects(primaryTarget); // Apply slow, poison, gold mark
+                 this.chainHitTargets.add(primaryTarget); // Mark primary target as hit for chain
+
+                 // --- Apply Splash Damage & Effects ---
+                 if (this.splashRadius > 0) {
+                     const hitX = this.x; const hitY = this.y;
+                     enemies.forEach(enemy => {
+                         if (enemy !== primaryTarget && enemy.health > 0) {
+                             const dxSplash = enemy.x - hitX; const dySplash = enemy.y - hitY; const distanceSqSplash = dxSplash * dxSplash + dySplash * dySplash;
+                             if (distanceSqSplash <= this.splashRadius * this.splashRadius) {
+                                 enemy.health -= this.damage; // Splash damage = main damage
+                                 this.applySingleTargetEffects(enemy); // Apply effects to splashed targets too
+                             }
+                         }
+                     });
+                 }
+
+                 // --- Apply Chain Lightning ---
+                 if (this.sourceTower && this.sourceTower.special === 'chain') {
+                     this.doChainLightning(primaryTarget, this.sourceTower.getChainCount(), this.sourceTower.getChainRange(), this.sourceTower.chainDamageFalloff || 0.6, this.damage);
+                 }
+             }
+
+             // Helper to apply non-chain effects
+             applySingleTargetEffects(enemy) {
+                  if (!this.sourceTower || enemy.health <= 0) return; // No tower or target dead
+
+                  // Apply Slow
+                 if (this.sourceTower.special === 'slow') {
+                     enemy.applySlow(this.sourceTower.getSlowFactor(), this.sourceTower.getSlowDuration());
+                 }
+                 // Apply Poison
+                 if (this.sourceTower.special === 'poison') {
+                     enemy.applyPoison(this.sourceTower.getPoisonDps(), this.sourceTower.getPoisonDuration());
+                 }
+                 // Apply Gold Mark
+                 if (this.sourceTower.special === 'gold') {
+                     enemy.applyGoldMark();
+                 }
+             }
+
+             // Recursive function for chain lightning
+             doChainLightning(currentTarget, remainingChains, chainRange, falloff, currentDamage) {
+                 if (remainingChains <= 0 || !currentTarget) return;
+
+                 let bestTarget = null;
+                 let minDistanceSq = chainRange * chainRange;
+
+                 // Find nearest valid enemy not already hit by this chain
+                 enemies.forEach(enemy => {
+                     if (enemy.health > 0 && !this.chainHitTargets.has(enemy)) {
+                         const dx = enemy.x - currentTarget.x;
+                         const dy = enemy.y - currentTarget.y;
+                         const distanceSq = dx * dx + dy * dy;
+                         if (distanceSq <= minDistanceSq) {
+                             minDistanceSq = distanceSq;
+                             bestTarget = enemy;
+                         }
+                     }
+                 });
+
+                 // If a target is found, hit it and continue chain
+                 if (bestTarget) {
+                      const nextDamage = currentDamage * falloff;
+                      bestTarget.health -= nextDamage;
+                      this.chainHitTargets.add(bestTarget); // Mark as hit
+                      this.applySingleTargetEffects(bestTarget); // Apply other effects
+
+                      // Draw lightning arc visually (simple line for now)
+                      ctx.strokeStyle = this.color;
+                      ctx.lineWidth = 2;
+                      ctx.beginPath();
+                      ctx.moveTo(currentTarget.x, currentTarget.y);
+                      ctx.lineTo(bestTarget.x, bestTarget.y);
+                      ctx.stroke();
+                      // Recursive call
+                      this.doChainLightning(bestTarget, remainingChains - 1, chainRange, falloff, nextDamage);
+                 }
+             }
+
+
+            draw() { /* ... same as before ... */ ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2); ctx.fill(); }
+        }
+
+        // --- Game Logic Functions ---
+        let lastTime = 0; // For delta time calculation
+        function gameLoop(currentTime) {
+            if (!gameActive) return;
+            const deltaTime = currentTime - lastTime; // Time since last frame in ms
+            lastTime = currentTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawCurvedPath();
+
+            // --- Update and Draw Enemies ---
+             for (let i = enemies.length - 1; i >= 0; i--) {
+                 const enemy = enemies[i];
+                  // Apply poison damage / Update status effect timers BEFORE checking health <= 0
+                 enemy.updateStatusEffects(deltaTime);
+
+                 if (enemy.health <= 0) {
+                     let killMoney = enemy.moneyDrop;
+                     if (enemy.hitByGoldTower && selectedTower && selectedTower.special === 'gold') { // Check if hit by *A* gold tower
+                         killMoney += selectedTower.getGoldBonus(); // Add bonus from the *selected* gold tower (simplification)
+                         // More robust: Need to track which *specific* gold tower hit last.
+                         // For now, any selected gold tower gives bonus.
+                         // Alternative: Just add flat bonus if hitByGoldTower is true, regardless of selected tower.
+                          // Let's do the latter for simplicity:
+                         // killMoney += (towerBaseProperties['gold']?.goldBonus || 0); // Add base bonus if hit
+                     }
+                    money += killMoney;
+                    moneyDisplay.textContent = money;
+                    enemies.splice(i, 1);
+                    continue;
+                }
+                if (!enemy.move()) {
+                    lives--;
+                    livesDisplay.textContent = lives;
+                    enemies.splice(i, 1);
+                    if (lives <= 0) { gameOver(); return; }
+                } else { enemy.draw(); }
+            }
+
+             // --- Update and Draw Projectiles ---
+             for (let i = projectiles.length - 1; i >= 0; i--) {
+                 const projectile = projectiles[i];
+                 const moveResult = projectile.move();
+                 if (moveResult === 'hit') {
+                     projectile.applyDamage();
+                     projectiles.splice(i, 1);
+                 } else if (moveResult === 'moving'){
+                     projectile.draw();
+                 } else { // invalid_target or off-screen
+                      projectiles.splice(i, 1);
+                 }
+            }
+
+            // --- Update and Draw Towers ---
+            towers.forEach(tower => { tower.update(); tower.draw(); });
+
+            drawPlacementPreview();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+        function spawnEnemy() { /* ... as before (rarity based) ... */ let rarity; const rand = Math.random(); if (rand < 0.60) { rarity = 'common'; } else if (rand < 0.85) { rarity = 'uncommon'; } else if (rand < 0.97) { rarity = 'rare'; } else { rarity = 'super_rare'; } enemies.push(new Enemy(rarity)); }
+        function startWave() { /* ... as before (fixed 5 enemies) ... */ if (!gameActive || (waveButton && waveButton.disabled)) return; let enemyCount = 5; let spawnInterval = Math.max(200, 1500 / (1 + wave * 0.2)); let enemiesSpawned = 0; if(waveButton) waveButton.disabled = true; let waveSpawnIntervalId = setInterval(() => { if (!gameActive) { clearInterval(waveSpawnIntervalId); if (waveButton) waveButton.disabled = false; return; } spawnEnemy(); enemiesSpawned++; if (enemiesSpawned >= enemyCount) { clearInterval(waveSpawnIntervalId); setTimeout(checkWaveClear, 2000); } }, spawnInterval); wave++; waveNumberDisplay.textContent = wave; }
+        function checkWaveClear() { /* ... as before ... */ if (enemies.length === 0 && projectiles.length === 0 && gameActive) { if (waveButton) waveButton.disabled = false; } else if (gameActive) { setTimeout(checkWaveClear, 1000); } else { if (waveButton) waveButton.disabled = false; } }
+        function gameOver() { /* ... as before ... */ gameActive = false; if (gameLoopId) { cancelAnimationFrame(gameLoopId); } if (waveButton) waveButton.disabled = true; ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = '48px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center'; ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 30); ctx.font = '24px Arial'; ctx.fillStyle = 'white'; ctx.fillText('You reached wave ' + (wave -1), canvas.width / 2, canvas.height / 2 + 20); }
+
+         // --- UI Interaction ---
+        canvas.addEventListener('mousemove', (event) => { /* ... as before ... */ const rect = canvas.getBoundingClientRect(); mouseX = event.clientX - rect.left; mouseY = event.clientY - rect.top; });
+        canvas.addEventListener('mouseleave', () => { /* ... as before ... */ mouseX = -1; mouseY = -1; });
+        function drawPlacementPreview() { /* ... as before ... */ if (!gameActive || !selectedTowerType || mouseX < 0 || mouseY < 0) return; const gridX = Math.floor(mouseX / gridSize); const gridY = Math.floor(mouseY / gridSize); if (gridY < 0 || gridY >= gridHeight || gridX < 0 || gridX >= gridWidth) return; const previewX = gridX * gridSize + gridSize / 2; const previewY = gridY * gridSize + gridSize / 2; const isValidPlacement = placementGrid[gridY][gridX] === 0; const baseProps = towerBaseProperties[selectedTowerType]; const towerCost = baseProps.cost; const canAfford = money >= towerCost; ctx.globalAlpha = 0.5; ctx.fillStyle = (isValidPlacement && canAfford) ? baseProps.color : 'red'; ctx.fillRect(previewX - gridSize / 2, previewY - gridSize / 2, gridSize, gridSize); ctx.globalAlpha = 1.0; ctx.strokeStyle = (isValidPlacement && canAfford) ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 0, 0, 0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(previewX, previewY, baseProps.baseRange, 0, Math.PI * 2); ctx.stroke(); }
+
+        // Update Upgrade UI to handle special upgrades
+        function updateUpgradeUI() {
+             if (!selectedTower) { upgradePanel.style.display = 'none'; return; }
+             // Standard Upgrades
+             document.getElementById('upgradeDmgVal').textContent = selectedTower.getDamage().toFixed(1); document.getElementById('upgradeDmgLvl').textContent = selectedTower.levelDamage; document.getElementById('upgradeDmgCost').textContent = selectedTower.costDamage; document.getElementById('upgradeRngVal').textContent = selectedTower.getRange().toFixed(0); document.getElementById('upgradeRngLvl').textContent = selectedTower.levelRange; document.getElementById('upgradeRngCost').textContent = selectedTower.costRange; document.getElementById('upgradeSpdVal').textContent = selectedTower.getAttackSpeedDisplay(); document.getElementById('upgradeSpdLvl').textContent = selectedTower.levelSpeed; document.getElementById('upgradeSpdCost').textContent = selectedTower.costSpeed;
+             const dmgBtn = document.getElementById('upgradeDmgBtn'); dmgBtn.disabled = selectedTower.levelDamage >= MAX_UPGRADE_LEVEL || money < selectedTower.costDamage; const rngBtn = document.getElementById('upgradeRngBtn'); rngBtn.disabled = selectedTower.levelRange >= MAX_UPGRADE_LEVEL || money < selectedTower.costRange; const spdBtn = document.getElementById('upgradeSpdBtn'); spdBtn.disabled = selectedTower.levelSpeed >= MAX_UPGRADE_LEVEL || money < selectedTower.costSpeed;
+
+             // Special Upgrade Handling
+             const specialStatDiv = document.getElementById('upgradeSpecialStat');
+             const specialNameSpan = document.getElementById('upgradeSpecialName');
+             const specialValSpan = document.getElementById('upgradeSpecialVal');
+             const specialLvlSpan = document.getElementById('upgradeSpecialLvl');
+             const specialCostSpan = document.getElementById('upgradeSpecialCost');
+             const specialBtn = document.getElementById('upgradeSpecialBtn');
+
+             if (selectedTower.special) {
+                 let specialName = "Special"; let specialValue = "-";
+                 switch (selectedTower.special) {
+                     case 'slow': specialName = "Slow Power"; specialValue = `${((1 - selectedTower.getSlowFactor())*100).toFixed(0)}% / ${(selectedTower.getSlowDuration()/60).toFixed(1)}s`; break;
+                     case 'poison': specialName = "Poison"; specialValue = `${selectedTower.getPoisonDps().toFixed(1)} dps / ${(selectedTower.getPoisonDuration()/60).toFixed(1)}s`; break;
+                     case 'chain': specialName = "Chain"; specialValue = `${selectedTower.getChainCount()} jumps / ${selectedTower.getChainRange()} px`; break;
+                     case 'gold': specialName = "Gold Bonus"; specialValue = `+$${selectedTower.getGoldBonus()}`; break;
+                     case 'splash': specialName = "Splash Rng"; specialValue = `${selectedTower.getSplashRadius()} px`; break;
+                     // Add cases for laser speed, mortar?, multi? if they get special upgrades
+                 }
+                 specialNameSpan.textContent = specialName;
+                 specialValSpan.textContent = specialValue;
+                 specialLvlSpan.textContent = selectedTower.levelSpecial;
+                 specialCostSpan.textContent = selectedTower.costSpecial;
+                 specialBtn.disabled = selectedTower.levelSpecial >= MAX_UPGRADE_LEVEL || money < selectedTower.costSpecial;
+                 specialStatDiv.style.display = 'flex'; // Show the special upgrade row
+             } else {
+                 specialStatDiv.style.display = 'none'; // Hide if no special upgrade
+             }
+
+             upgradePanel.style.display = 'block';
+        }
+
+        function tryUpgrade(statType) { /* ... same as before ... */ if (!selectedTower) return; if (selectedTower.upgrade(statType)) { moneyDisplay.textContent = money; updateUpgradeUI(); } else { updateUpgradeUI(); } }
+        function handleClick(event) { /* ... same as before ... */ if (!gameActive) return; const rect = canvas.getBoundingClientRect(); const clickX = event.clientX - rect.left; const clickY = event.clientY - rect.top; const panelRect = upgradePanel.getBoundingClientRect(); if (upgradePanel.style.display === 'block' && clickX >= panelRect.left - rect.left && clickX <= panelRect.right - rect.left && clickY >= panelRect.top - rect.top && clickY <= panelRect.bottom - rect.top) { return; } let clickedExistingTower = false; for (const tower of towers) { const dx = clickX - tower.x; const dy = clickY - tower.y; if (dx * dx + dy * dy <= (gridSize / 2) * (gridSize / 2)) { if (selectedTower !== tower) { deselectTower(); selectedTower = tower; canvas.style.cursor = "pointer"; updateUpgradeUI(); } clickedExistingTower = true; break; } } if (!clickedExistingTower) { if (selectedTower) { deselectTower(); } if (selectedTowerType) { const gridX = Math.floor(clickX / gridSize); const gridY = Math.floor(clickY / gridSize); if (gridY >= 0 && gridY < gridHeight && gridX >= 0 && gridX < gridWidth && placementGrid[gridY][gridX] === 0) { const baseProps = towerBaseProperties[selectedTowerType]; const towerCost = baseProps.cost; if (money >= towerCost) { towers.push(new Tower(gridX * gridSize + gridSize / 2, gridY * gridSize + gridSize / 2, selectedTowerType)); placementGrid[gridY][gridX] = 2; money -= towerCost; moneyDisplay.textContent = money; if (money < towerCost) { selectedTowerType = null; canvas.style.cursor = "pointer"; } } else { console.log("Not enough money!"); selectedTowerType = null; canvas.style.cursor = "pointer"; } } else { console.log("Cannot place tower here."); selectedTowerType = null; canvas.style.cursor = "pointer"; } } } }
+        function selectTowerForPlacement(type) { /* ... same as before ... */ if (!gameActive) return; deselectTower(); const baseProps = towerBaseProperties[type]; if (money >= baseProps.cost) { selectedTowerType = type; canvas.style.cursor = "crosshair"; } else { selectedTowerType = null; canvas.style.cursor = "pointer"; } }
+        function deselectTower(forceClosePanel = false) { /* ... same as before ... */ if(selectedTowerType){ selectedTowerType = null; canvas.style.cursor = "pointer"; } if (selectedTower) { selectedTower = null; if (forceClosePanel) { upgradePanel.style.display = 'none'; } else { updateUpgradeUI(); } } if (forceClosePanel) upgradePanel.style.display = 'none'; }
+
+        // --- Pre-Game Selections ---
+        function selectDifficulty(speedMultiplier) { /* ... same as before ... */ difficultySpeedMultiplier = speedMultiplier; difficultyScreen.classList.add('hidden'); mapSelectionScreen.classList.remove('hidden'); }
+        function selectMap(mapIndex) { /* ... same as before ... */ if (mapIndex < 0 || mapIndex >= mapData.length) { console.error("Invalid map index:", mapIndex); return; } pathCorners = mapData[mapIndex]; mapSelectionScreen.classList.add('hidden'); gameContainer.style.visibility = 'visible'; initGame(); }
+
+        // --- Initialize Game ---
+        function initGame() { /* ... same as before ... */ generateDetailedPath(); updatePlacementGrid(); livesDisplay.textContent = lives; moneyDisplay.textContent = money; waveNumberDisplay.textContent = wave; canvas.addEventListener('click', handleClick); if (!gameLoopId) { gameLoop(performance.now()); } } // Pass initial time to gameLoop
+        // Don't call initGame() automatically.
+
+    </script>
+
+</body>
+
+</html>
