@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Practice</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            text-align: center;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        select, input[type="number"], button {
+            padding: 10px;
+            margin: 10px 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        select {
+            cursor: pointer;
+        }
+        input[type="number"] {
+            width: 80px;
+            text-align: center;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .question-area {
+            margin-top: 25px;
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #555;
+            min-height: 40px; /* Prevent layout shift */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .question-area span {
+           padding: 0 10px; /* Space around operator */
+        }
+        .feedback-area {
+            margin-top: 15px;
+            min-height: 25px; /* Prevent layout shift */
+            font-weight: bold;
+        }
+        .feedback-correct {
+            color: #28a745;
+        }
+        .feedback-incorrect {
+            color: #dc3545;
+        }
+         /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield; /* Firefox */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Math Practice</h1>
+
+        <div>
+            <label for="grade-select">Select Grade:</label>
+            <select id="grade-select">
+                <option value="1">1st Grade</option>
+                <option value="2">2nd Grade</option>
+                <option value="3" selected>3rd Grade</option>
+                <option value="4">4th Grade</option>
+                <option value="5">5th Grade</option>
+                <option value="6">6th Grade</option>
+                <option value="7">7th Grade</option>
+                <option value="8">8th Grade</option>
+            </select>
+        </div>
+
+        <div class="question-area">
+            <span id="question-text"></span>
+            <span id="equals-sign"></span>
+            <input type="number" id="answer-input" aria-label="Answer">
+        </div>
+
+        <div>
+            <button id="submit-button">Check Answer</button>
+        </div>
+
+        <div id="feedback" class="feedback-area"></div>
+    </div>
+
+    <script>
+        const gradeSelect = document.getElementById('grade-select');
+        const questionTextEl = document.getElementById('question-text');
+        const equalsSignEl = document.getElementById('equals-sign');
+        const answerInput = document.getElementById('answer-input');
+        const submitButton = document.getElementById('submit-button');
+        const feedbackEl = document.getElementById('feedback');
+
+        let currentQuestion = {
+            num1: 0,
+            num2: 0,
+            operator: '+',
+            answer: 0
+        };
+
+        function getRandomInt(min, max) {
+            // Returns a random integer between min (inclusive) and max (inclusive)
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function generateQuestion() {
+            const grade = parseInt(gradeSelect.value);
+            let num1, num2, operator, answer;
+            let problemText = '';
+
+            switch (grade) {
+                case 1: // Addition (0-10)
+                    num1 = getRandomInt(0, 10);
+                    num2 = getRandomInt(0, 10);
+                    operator = '+';
+                    answer = num1 + num2;
+                    problemText = `${num1} ${operator} ${num2}`;
+                    break;
+                case 2: // Addition (0-20), Subtraction (result >= 0, 0-20)
+                    if (Math.random() < 0.5) { // Addition
+                        num1 = getRandomInt(0, 20);
+                        num2 = getRandomInt(0, 20);
+                        operator = '+';
+                        answer = num1 + num2;
+                    } else { // Subtraction
+                        num1 = getRandomInt(0, 20);
+                        num2 = getRandomInt(0, num1); // Ensure num2 <= num1 for non-negative result
+                        operator = '-';
+                        answer = num1 - num2;
+                    }
+                    problemText = `${num1} ${operator} ${num2}`;
+                    break;
+                case 3: // Multiplication (0-12)
+                    num1 = getRandomInt(0, 12);
+                    num2 = getRandomInt(0, 12);
+                    operator = '×'; // Using multiplication sign
+                    answer = num1 * num2;
+                    problemText = `${num1} ${operator} ${num2}`;
+                    break;
+                case 4: // Multiplication (0-15), Division (exact, divisor 1-10, result 1-15)
+                    if (Math.random() < 0.5 || grade < 4) { // Multiplication
+                        num1 = getRandomInt(1, 15);
+                        num2 = getRandomInt(1, 15);
+                        operator = '×';
+                        answer = num1 * num2;
+                        problemText = `${num1} ${operator} ${num2}`;
+                    } else { // Division
+                        let divisor = getRandomInt(1, 10);
+                        let quotient = getRandomInt(1, 15);
+                        num1 = divisor * quotient; // Ensure exact division
+                        num2 = divisor;
+                        operator = '÷'; // Using division sign
+                        answer = quotient;
+                        problemText = `${num1} ${operator} ${num2}`;
+                    }
+                    break;
+                 case 5: // Multiplication (10-50 * 1-10 or 10-30 * 10-30), Division (larger exact)
+                    if (Math.random() < 0.6) { // Multiplication emphasis
+                        if (Math.random() < 0.5) {
+                             num1 = getRandomInt(10, 50);
+                             num2 = getRandomInt(2, 10);
+                        } else {
+                             num1 = getRandomInt(10, 30);
+                             num2 = getRandomInt(10, 30);
+                        }
+                        operator = '×';
+                        answer = num1 * num2;
+                        problemText = `${num1} ${operator} ${num2}`;
+                    } else { // Division (larger exact)
+                        let divisor = getRandomInt(2, 15);
+                        let quotient = getRandomInt(5, 25);
+                        num1 = divisor * quotient;
+                        num2 = divisor;
+                        operator = '÷';
+                        answer = quotient;
+                        problemText = `${num1} ${operator} ${num2}`;
+                    }
+                    break;
+                 case 6: // Integer Add/Sub (-20 to 20)
+                    num1 = getRandomInt(-20, 20);
+                    num2 = getRandomInt(-20, 20);
+                     if (Math.random() < 0.5) {
+                        operator = '+';
+                        answer = num1 + num2;
+                        // Format nicely for negative numbers in subtraction representation
+                        problemText = `${num1} ${operator} ${num2 < 0 ? '(' + num2 + ')' : num2}`;
+                    } else {
+                        operator = '-';
+                        answer = num1 - num2;
+                         // Format nicely for negative numbers in subtraction representation
+                        problemText = `${num1} ${operator} ${num2 < 0 ? '(' + num2 + ')' : num2}`;
+                    }
+                    break;
+                 case 7: // Integer Mul/Div (-15 to 15, non-zero divisor)
+                    if (Math.random() < 0.5) { // Multiplication
+                        num1 = getRandomInt(-15, 15);
+                        num2 = getRandomInt(-15, 15);
+                        operator = '×';
+                        answer = num1 * num2;
+                        problemText = `${num1 < 0 ? '('+num1+')' : num1} ${operator} ${num2 < 0 ? '('+num2+')' : num2}`;
+                    } else { // Division (exact)
+                        let divisor = getRandomInt(1, 15) * (Math.random() < 0.5 ? 1 : -1); // +/- divisor
+                        let quotient = getRandomInt(-15, 15);
+                        // Ensure divisor is not zero (already handled by range 1-15)
+                        num1 = divisor * quotient;
+                        num2 = divisor;
+                        operator = '÷';
+                        answer = quotient;
+                        problemText = `${num1 < 0 ? '('+num1+')' : num1} ${operator} ${num2 < 0 ? '('+num2+')' : num2}`;
+                    }
+                    break;
+                case 8: // Integer Mul/Div (-25 to 25, non-zero divisor)
+                     if (Math.random() < 0.5) { // Multiplication
+                        num1 = getRandomInt(-25, 25);
+                        num2 = getRandomInt(-25, 25);
+                        operator = '×';
+                        answer = num1 * num2;
+                        problemText = `${num1 < 0 ? '('+num1+')' : num1} ${operator} ${num2 < 0 ? '('+num2+')' : num2}`;
+                    } else { // Division (exact)
+                        let divisor = getRandomInt(1, 25) * (Math.random() < 0.5 ? 1 : -1);
+                         // Ensure divisor is not zero (already handled by range 1-25)
+                        if (divisor === 0) divisor = 1; // fallback just in case
+                        let quotient = getRandomInt(-25, 25);
+                        num1 = divisor * quotient;
+                        num2 = divisor;
+                        operator = '÷';
+                        answer = quotient;
+                        problemText = `${num1 < 0 ? '('+num1+')' : num1} ${operator} ${num2 < 0 ? '('+num2+')' : num2}`;
+                    }
+                    break;
+                default:
+                    problemText = "Select a grade";
+                    answer = NaN;
+            }
+
+            currentQuestion = { num1, num2, operator, answer }; // Store full details if needed later
+
+            questionTextEl.textContent = problemText;
+            equalsSignEl.textContent = "="; // Show equals sign
+            feedbackEl.textContent = ''; // Clear feedback
+            feedbackEl.className = 'feedback-area'; // Reset feedback class
+            answerInput.value = ''; // Clear answer input
+            answerInput.disabled = false; // Enable input
+            answerInput.focus(); // Focus on input for quick entry
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value); // Use parseFloat if dealing with decimals later
+
+            if (isNaN(userAnswer)) {
+                feedbackEl.textContent = "Please enter a number.";
+                feedbackEl.className = 'feedback-area feedback-incorrect';
+                return;
+            }
+
+            if (userAnswer === currentQuestion.answer) {
+                feedbackEl.textContent = "Correct!";
+                feedbackEl.className = 'feedback-area feedback-correct';
+                answerInput.disabled = true; // Briefly disable input before new question
+                // Generate a new question after a short delay
+                setTimeout(generateQuestion, 1000);
+            } else {
+                feedbackEl.textContent = "Incorrect, try again!";
+                feedbackEl.className = 'feedback-area feedback-incorrect';
+                answerInput.select(); // Select the incorrect answer for easy correction
+                answerInput.focus();
+            }
+        }
+
+        // Event Listeners
+        gradeSelect.addEventListener('change', generateQuestion);
+        submitButton.addEventListener('click', checkAnswer);
+        // Allow pressing Enter key to submit answer
+        answerInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default form submission if it were in a form
+                submitButton.click(); // Trigger the checkAnswer function
+            }
+        });
+
+        // Initial Setup
+        generateQuestion(); // Generate the first question on load for the default grade
+
+    </script>
+</body>
+</html>
